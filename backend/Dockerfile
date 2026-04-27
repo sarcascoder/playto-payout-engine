@@ -23,11 +23,11 @@ COPY . .
 # collectstatic is required for /admin/ to render correctly with whitenoise
 RUN uv run python manage.py collectstatic --noinput || true
 
+RUN chmod +x scripts/start.sh
+
 EXPOSE 8000
 
-# Default command is the web server. Migrations run on every container start
-# (no-op if already applied). Seed runs idempotently — only creates the demo
-# merchants if none exist, so it's safe to repeat.
-# The Celery worker and beat services override this CMD via their start command
-# in the Railway service settings.
-CMD ["sh", "-c", "uv run python manage.py migrate --noinput && uv run python manage.py shell -c \"exec(open('scripts/seed.py').read())\" && uv run gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --access-logfile -"]
+# Default command runs migrations + idempotent seed + gunicorn.
+# The Celery worker and beat services override this CMD via the
+# Custom Start Command in Railway service settings.
+CMD ["sh", "scripts/start.sh"]
