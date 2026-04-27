@@ -21,6 +21,13 @@ export function PayoutForm() {
         const paise = Math.round(parseFloat(rupees) * 100);
         if (!paise || paise < 1) { setError("Enter a valid amount"); return; }
         if (!bankId) { setError("Select a bank account"); return; }
+        // JS Number loses precision past 2^53 (~9 × 10^15). Anything bigger
+        // than that as paise (₹10^14 ~= ₹100 trillion) is nonsense for a
+        // payout — reject client-side before sending.
+        if (!Number.isSafeInteger(paise) || paise > 10 ** 15) {
+          setError("Amount too large");
+          return;
+        }
         try {
           await create.mutateAsync({
             amount_paise: paise, bank_account_id: bankId,
@@ -30,8 +37,14 @@ export function PayoutForm() {
           const data = err?.response?.data;
           if (data?.error === "insufficient_balance") {
             setError(`Insufficient balance — available ${formatPaise(data.available_paise)}`);
+          } else if (data?.error === "invalid_amount") {
+            setError("Invalid amount");
+          } else if (data?.error) {
+            setError(data.error);
+          } else if (err?.message?.includes("Network")) {
+            setError("Network error — check your connection or backend status");
           } else {
-            setError(data?.error ?? "Request failed");
+            setError(`Request failed (${err?.response?.status ?? "no response"})`);
           }
         }
       }}

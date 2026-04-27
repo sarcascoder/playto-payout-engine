@@ -4,7 +4,10 @@ from .models import Payout, LedgerEntry
 
 
 class CreatePayoutRequestSerializer(serializers.Serializer):
-    amount_paise = serializers.IntegerField(min_value=1)
+    # Cap well below Postgres BigInt max (9.2e18) — protects the LedgerEntry
+    # write from OverflowError if a balance somehow accumulates that high.
+    # 10^15 paise = ₹10 trillion, more than any legitimate payout will ever be.
+    amount_paise = serializers.IntegerField(min_value=1, max_value=10**15)
     bank_account_id = serializers.UUIDField()
 
 
