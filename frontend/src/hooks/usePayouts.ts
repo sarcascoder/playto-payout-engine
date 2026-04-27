@@ -17,6 +17,32 @@ export function useBankAccounts() {
   });
 }
 
+export function useAddBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      account_holder_name: string;
+      account_number: string;
+      ifsc_code: string;
+      is_default?: boolean;
+    }) => {
+      const { data } = await api.post("/bank-accounts", input);
+      return data as BankAccount;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bank-accounts"] }),
+  });
+}
+
+export function useDeleteBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/bank-accounts/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bank-accounts"] }),
+  });
+}
+
 export function useCreatePayout() {
   const qc = useQueryClient();
   return useMutation({

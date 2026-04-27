@@ -4,6 +4,7 @@ import { PayoutForm } from "../components/PayoutForm";
 import { PayoutHistory } from "../components/PayoutHistory";
 import { LedgerActivity } from "../components/LedgerActivity";
 import { DemoPanel } from "../components/DemoPanel";
+import { BankAccountsPanel } from "../components/BankAccountsPanel";
 
 export function DashboardPage() {
   const me = useMe();
@@ -27,6 +28,7 @@ export function DashboardPage() {
         <BalanceCard />
         <DemoPanel />
         <PayoutForm />
+        <BankAccountsPanel />
         <PayoutHistory />
         <LedgerActivity />
       </div>
