@@ -80,6 +80,52 @@ uv run pytest
 
 Plus state-machine, balance-derivation, end-to-end worker flow, and watchdog tests.
 
+## How to demo each rubric criterion (live)
+
+Open the [live dashboard](https://frontend-lake-mu-20.vercel.app), sign in as `bob@playto.dev / bob-pass-1` (₹8,000 balance — gives more room to play), and use the **"Demo: rubric-graded edge cases"** panel near the top. Three buttons:
+
+| Button | Demonstrates | What you'll see |
+|---|---|---|
+| 🏎️ **Concurrency: 8 parallel payouts** | The `SELECT FOR UPDATE` lock | 8 requests fired at once, each demanding ⅓ of available balance → exactly ~3 succeed, ~5 get clean 422s. Balance never goes negative. |
+| 🔁 **Idempotency: same key twice** | The unique-index dedup | Two POSTs with identical `Idempotency-Key` → same payout id, second returns `idempotent_replay: true`. |
+| 💸 **Overdraw: 422 insufficient** | Balance enforcement | Asks for `available + ₹100` → returns `422 insufficient_balance` with structured body. |
+
+Then watch the **payout history** and **recent activity** tables update live (poll every 3s). For failed payouts you'll see the matching `payout_reversal` credit entry — that's the atomic state-transition + reversal in action.
+
+### Or via curl from your terminal
+
+```bash
+BASE=https://playto-payout-engine-production-8dda.up.railway.app/api/v1
+ACCESS=$(curl -s -X POST $BASE/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"bob@playto.dev","password":"bob-pass-1"}' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['access'])")
+BANK=$(curl -s $BASE/bank-accounts -H "Authorization: Bearer $ACCESS" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+
+# Concurrency: fire 8 parallel ₹3000 payouts (Bob has ₹8000 → ~2 should succeed)
+for i in $(seq 1 8); do
+  ( curl -s -X POST $BASE/payouts \
+      -H "Authorization: Bearer $ACCESS" \
+      -H "Idempotency-Key: $(uuidgen | tr 'A-Z' 'a-z')" \
+      -H "Content-Type: application/json" \
+      -d "{\"amount_paise\": 300000, \"bank_account_id\": \"$BANK\"}" \
+      -w "\n[$i] HTTP %{http_code}\n" ) &
+done
+wait
+
+# Idempotency: same key twice
+KEY=$(uuidgen | tr 'A-Z' 'a-z')
+for i in 1 2; do
+  curl -s -X POST $BASE/payouts \
+    -H "Authorization: Bearer $ACCESS" \
+    -H "Idempotency-Key: $KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"amount_paise\": 1000, \"bank_account_id\": \"$BANK\"}" \
+    -w "\n[$i] HTTP %{http_code}\n"
+done
+```
+
 ---
 
 ## Architecture (high level)
