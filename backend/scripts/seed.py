@@ -32,7 +32,11 @@ def make_merchant(email, name, password, credits_paise):
 
 
 def run():
-    reset()
+    # Idempotent: skip if seed already ran. This lets us safely run on every
+    # container start in production.
+    if Merchant.objects.filter(is_superuser=False).exists():
+        print("Merchants already exist; skipping seed.")
+        return
     alice = make_merchant(
         "alice@playto.dev", "Alice's Design Studio", "alice-pass-1",
         credits_paise=[500_00, 1200_00, 800_00],   # ₹2500
