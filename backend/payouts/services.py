@@ -213,5 +213,32 @@ def create_payout(
 
 
 def _enqueue_attempt_payout(payout_id: str):
-    """Stub for D3 — does nothing yet. Wired to Celery in Task 19."""
-    return
+    """Fire the Celery worker after the create_payout transaction commits."""
+    from .tasks import attempt_payout
+    attempt_payout.delay(payout_id)
+
+
+def mark_payout_failed(payout_id: str, reason: str):
+    """Atomically transition payout to FAILED and write the reversal CREDIT.
+
+    Holds locks on both the Payout row and the Merchant row. State change
+    and reversal commit together — there is never a window where the payout
+    is FAILED but the held funds haven't returned.
+    """
+    with transaction.atomic():
+        payout = Payout.objects.select_for_update().get(id=payout_id)
+        # Re-acquire merchant lock for the ledger write (invariant).
+        merchant = Merchant.objects.select_for_update().get(id=payout.merchant_id)
+        if payout.status in (Payout.COMPLETED, Payout.FAILED):
+            return  # already terminal; safe no-op
+        payout.transition_to(Payout.FAILED, actor="worker", reason=reason)
+        payout.last_error = reason
+        payout.save(update_fields=["last_error"])
+        LedgerEntry.objects.create(
+            merchant=merchant,
+            amount_paise=payout.amount_paise,
+            entry_type=LedgerEntry.CREDIT,
+            category=LedgerEntry.PAYOUT_REVERSAL,
+            payout=payout,
+            description=f"Reversal for failed payout {payout.id}: {reason}",
+        )
