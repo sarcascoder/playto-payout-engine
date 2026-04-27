@@ -17,54 +17,52 @@ export function BankAccountsPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setHolder(""); setNumber(""); setIfsc(""); setIsDefault(false);
-    setError(null);
+    setHolder(""); setNumber(""); setIfsc(""); setIsDefault(false); setError(null);
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-      <div className="flex items-center justify-between">
+    <section className="card p-6">
+      <header className="flex items-start justify-between mb-3">
         <div>
-          <h2 className="font-semibold text-slate-900">Bank accounts</h2>
-          <p className="text-xs text-slate-500">
-            Where payouts settle. Multiple banks supported per merchant.
+          <span className="eyebrow">Bank accounts</span>
+          <h2 className="text-base font-medium text-[var(--color-ink)] mt-0.5">
+            Settlement destinations
+          </h2>
+          <p className="text-[12px] text-[var(--color-ink-muted)] mt-0.5">
+            Multiple banks supported · validated server-side
           </p>
         </div>
         <button
           onClick={() => { setShowForm((x) => !x); reset(); }}
-          className="text-sm text-slate-700 hover:text-slate-900 underline underline-offset-2"
+          className="btn btn-ghost text-[12px]"
         >
-          {showForm ? "Cancel" : "+ Add"}
+          {showForm ? "Cancel" : "+ Add account"}
         </button>
-      </div>
+      </header>
 
-      {/* Existing list */}
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-[var(--color-line-soft)]">
         {banks.data?.map((b) => (
-          <li
-            key={b.id}
-            className="flex items-center justify-between py-2 text-sm"
-          >
-            <div>
-              <div className="font-medium text-slate-900">
-                {b.account_holder_name}{" "}
+          <li key={b.id} className="flex items-center justify-between py-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 font-medium text-[14px] text-[var(--color-ink)] truncate">
+                <span className="truncate">{b.account_holder_name}</span>
                 {b.is_default && (
-                  <span className="ml-2 text-xs px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded">
-                    default
+                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-[#E5F2EB] text-[var(--color-success)] rounded uppercase tracking-wider font-medium">
+                    Default
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-500 font-mono">
+              <div className="text-[12px] text-[var(--color-ink-muted)] font-mono mt-0.5">
                 {b.ifsc_code} · ····{b.account_number.slice(-4)}
               </div>
             </div>
             <button
               onClick={() => {
-                if (confirm(`Remove bank account ending ${b.account_number.slice(-4)}?`)) {
+                if (confirm(`Remove account ending ${b.account_number.slice(-4)}?`)) {
                   del.mutate(b.id);
                 }
               }}
-              className="text-xs text-slate-400 hover:text-red-600"
+              className="text-[12px] text-[var(--color-ink-faint)] hover:text-[var(--color-danger)] transition-colors"
               disabled={del.isPending}
             >
               Remove
@@ -73,10 +71,9 @@ export function BankAccountsPanel() {
         ))}
       </ul>
 
-      {/* Add-new form */}
       {showForm && (
         <form
-          className="space-y-2 pt-3 border-t border-slate-100"
+          className="space-y-3 pt-4 mt-2 border-t border-[var(--color-line)]"
           onSubmit={async (e) => {
             e.preventDefault();
             setError(null);
@@ -102,53 +99,55 @@ export function BankAccountsPanel() {
           }}
         >
           <input
-            value={holder}
-            onChange={(e) => setHolder(e.target.value)}
+            value={holder} onChange={(e) => setHolder(e.target.value)}
             placeholder="Account holder name"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="input w-full"
             required
           />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
             <input
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
+              value={number} onChange={(e) => setNumber(e.target.value)}
               placeholder="Account number"
-              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="input font-mono"
               required
             />
             <input
-              value={ifsc}
-              onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+              value={ifsc} onChange={(e) => setIfsc(e.target.value.toUpperCase())}
               placeholder="HDFC0001234"
-              className="w-44 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="input font-mono w-full md:w-44"
               required
               maxLength={11}
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-[13px] text-[var(--color-ink-soft)]">
             <input
               type="checkbox"
               checked={isDefault}
               onChange={(e) => setIsDefault(e.target.checked)}
+              className="accent-[var(--color-brand)]"
             />
-            Make this the default account
+            Set as default account
           </label>
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-[var(--color-ink-muted)]">
+              IFSC: 4 letters + 0 + 6 alphanumeric · Account: 6–20 digits
+            </p>
             <button
               type="submit"
-              className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+              className="btn btn-primary text-[13px]"
               disabled={add.isPending}
             >
-              {add.isPending ? "Adding…" : "Add bank account"}
+              {add.isPending ? "Adding…" : "Add account"}
             </button>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <p className="text-xs text-slate-500">
-            IFSC must be 4 letters + 0 + 6 alphanumeric (e.g. <code>HDFC0001234</code>).
-            Account number 6-20 digits.
-          </p>
+          {error && (
+            <p className="text-[13px] text-[var(--color-danger)] flex items-center gap-1.5">
+              <span className="h-1 w-1 rounded-full bg-[var(--color-danger)]" />
+              {error}
+            </p>
+          )}
         </form>
       )}
-    </div>
+    </section>
   );
 }

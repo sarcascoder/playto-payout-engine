@@ -1,1 +1,200 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Editorial-precision fintech palette. Cream paper, deep teal accent,
+ * tabular figures for ledger-style number alignment.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  /* Surfaces */
+  --color-paper: #f7f5ef;
+  --color-paper-deep: #efece3;
+  --color-card: #ffffff;
+  --color-line: #e8e4dc;
+  --color-line-soft: #f0ebe0;
+
+  /* Ink */
+  --color-ink: #171717;
+  --color-ink-soft: #454541;
+  --color-ink-muted: #84827c;
+  --color-ink-faint: #b3afa7;
+
+  /* Brand */
+  --color-brand: #0f4c4c;
+  --color-brand-deep: #0a3939;
+  --color-taupe: #a1846b;
+
+  /* Money */
+  --color-credit: #0e7a4b;
+  --color-debit: #9c6420;
+  --color-success: #0e7a4b;
+  --color-warning: #c08a1f;
+  --color-danger: #a33636;
+  --color-info: #3d4d8c;
+
+  /* Type */
+  --font-serif: "Instrument Serif", "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+
+/* Base canvas with a faint paper grain. The grain is a tiny SVG noise texture
+ * encoded as a data URI — adds atmosphere without an HTTP request. */
+html, body {
+  font-family: var(--font-sans);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-feature-settings: "ss01", "cv01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .05 0 0 0 0 .05 0 0 0 0 .03 0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+/* Tabular figures for any money number. Apply via .num. */
+.num {
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* The small uppercase eyebrow labels above section headings. */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Subtle pulse — applied to the "processing" status badge. */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.pulse-soft {
+  animation: pulse-soft 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Fade-in-from-below on first paint. Used for staggered hero reveal. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rise-in {
+  animation: rise-in 480ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.rise-in-delay-1 { animation-delay: 60ms; }
+.rise-in-delay-2 { animation-delay: 140ms; }
+.rise-in-delay-3 { animation-delay: 220ms; }
+.rise-in-delay-4 { animation-delay: 300ms; }
+
+/* Card primitive — used everywhere. */
+.card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(23, 23, 23, 0.02),
+    0 4px 14px -8px rgba(23, 23, 23, 0.06);
+}
+
+/* Inputs — restrained, with just enough texture to feel intentional. */
+.input {
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 14px;
+  color: var(--color-ink);
+  transition: border-color 120ms, background-color 120ms, box-shadow 120ms;
+}
+.input:focus {
+  outline: none;
+  background-color: var(--color-card);
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(15, 76, 76, 0.10);
+}
+.input::placeholder {
+  color: var(--color-ink-faint);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition: background-color 120ms, transform 80ms, box-shadow 120ms;
+}
+.btn:active { transform: translateY(0.5px); }
+
+.btn-primary {
+  background-color: var(--color-brand);
+  color: var(--color-card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 1px 2px rgba(15, 76, 76, 0.18);
+}
+.btn-primary:hover { background-color: var(--color-brand-deep); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-ink-soft);
+  border: 1px solid var(--color-line);
+}
+.btn-ghost:hover {
+  background-color: var(--color-paper-deep);
+  border-color: #d7d2c5;
+}
+.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Brand wordmark */
+.wordmark {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 28px;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+.wordmark em {
+  font-style: italic;
+  color: var(--color-brand);
+}
+
+/* Display number for the balance hero. */
+.display-num {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* A thin separator with a centered dot — used inside cards. */
+.sep-dot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-ink-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.sep-dot::before, .sep-dot::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-line);
+}
