@@ -1,0 +1,4 @@
+web: uv run gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --access-logfile -
+worker: uv run celery -A config worker -l info --pool=solo
+beat: uv run celery -A config beat -l info
+release: uv run python manage.py migrate --noinput
