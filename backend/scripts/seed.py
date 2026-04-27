@@ -12,7 +12,7 @@ def reset():
     Merchant.objects.filter(is_superuser=False).delete()
 
 
-def make_merchant(email, name, password, credits_paise):
+def make_merchant(email, name, password, credits_paise, extra_banks=()):
     m = Merchant.objects.create_user(email=email, password=password, name=name)
     BankAccount.objects.create(
         merchant=m,
@@ -21,6 +21,8 @@ def make_merchant(email, name, password, credits_paise):
         ifsc_code="HDFC0001234",
         is_default=True,
     )
+    for ba in extra_banks:
+        BankAccount.objects.create(merchant=m, is_default=False, **ba)
     for amount in credits_paise:
         LedgerEntry.objects.create(
             merchant=m, amount_paise=amount,
@@ -44,6 +46,14 @@ def run():
     bob = make_merchant(
         "bob@playto.dev", "Bob's Dev Agency", "bob-pass-1",
         credits_paise=[5000_00, 3000_00],           # ₹8000
+        # Bob has 2 bank accounts to demo the dropdown
+        extra_banks=[
+            {
+                "account_holder_name": "Bob's Dev Agency",
+                "account_number": "551122334455",
+                "ifsc_code": "ICIC0005678",
+            },
+        ],
     )
     carol = make_merchant(
         "carol@playto.dev", "Carol's Marketing Co", "carol-pass-1",

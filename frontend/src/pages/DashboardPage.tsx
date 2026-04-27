@@ -2,6 +2,7 @@ import { useMe, logout } from "../hooks/useAuth";
 import { BalanceCard } from "../components/BalanceCard";
 import { PayoutForm } from "../components/PayoutForm";
 import { PayoutHistory } from "../components/PayoutHistory";
+import { LedgerActivity } from "../components/LedgerActivity";
 
 export function DashboardPage() {
   const me = useMe();
@@ -25,6 +26,7 @@ export function DashboardPage() {
         <BalanceCard />
         <PayoutForm />
         <PayoutHistory />
+        <LedgerActivity />
       </div>
     </div>
   );

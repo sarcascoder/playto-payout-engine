@@ -34,6 +34,16 @@ export interface Merchant {
   created_at: string;
 }
 
+export interface LedgerEntry {
+  id: string;
+  amount_paise: number;
+  entry_type: "credit" | "debit";
+  category: "customer_payment" | "payout_hold" | "payout_reversal";
+  payout_id: string | null;
+  description: string;
+  created_at: string;
+}
+
 export interface ApiError {
   error: string;
   [key: string]: unknown;
