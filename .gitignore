@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.python-version
+
+# Django
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docker
+.docker/
+
+# Misc
+*.log
