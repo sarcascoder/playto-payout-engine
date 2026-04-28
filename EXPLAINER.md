@@ -1,6 +1,82 @@
 # EXPLAINER
 
-The five questions, answered as I'd say them to the CTO.
+The five questions, answered as I'd say them to the CTO. Each section has a
+**"Verify this yourself"** callout — a one-line command or click-path you can
+run to confirm the claim, in case you want to read evidence not just code.
+
+---
+
+## How to open and run the project
+
+**Live URLs (zero setup, fastest path):**
+
+- Dashboard: <https://paytopay-one.vercel.app>
+- API: <https://playto-payout-engine-production-8dda.up.railway.app/api/v1>
+
+Demo accounts shown on the login page (`alice@playto.dev` / `alice-pass-1`,
+plus bob / carol). Sign in, scroll to the **"Live proof"** panel under the
+balance card — three buttons run the rubric criteria (concurrency,
+idempotency, overdraw) against the production API and show the response
+inline within seconds.
+
+**Local setup (5 minutes):**
+
+```bash
+git clone https://github.com/sarcascoder/playto-payout-engine
+cd playto-payout-engine
+cp .env.example .env
+docker compose up -d              # postgres + redis
+
+cd backend
+uv sync                            # install python deps via uv
+uv run python manage.py migrate
+uv run python manage.py shell < scripts/seed.py    # seed 3 merchants
+
+# 3 terminals (or use --pool=solo + & to background):
+uv run python manage.py runserver 0.0.0.0:8001
+uv run celery -A config worker -l info --pool=solo
+uv run celery -A config beat -l info
+
+# Frontend
+cd ../frontend
+npm install
+cp .env.example .env
+npm run dev                        # http://localhost:5173
+```
+
+**Run the tests (one command, ~3 seconds):**
+
+```bash
+cd backend && uv run pytest -v
+```
+
+Expected: `25 passed`. The two rubric-mandated tests are
+`tests/test_concurrency.py` (2 tests) and `tests/test_idempotency.py`
+(4 tests). Plus state-machine (8), balance derivation (4), worker
+end-to-end (3), watchdog (2), simulator (2).
+
+**Reproduce the live demo from your terminal:**
+
+```bash
+BASE=https://playto-payout-engine-production-8dda.up.railway.app/api/v1
+ACCESS=$(curl -s -X POST $BASE/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"bob@playto.dev","password":"bob-pass-1"}' \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['access'])")
+BANK=$(curl -s $BASE/bank-accounts -H "Authorization: Bearer $ACCESS" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+
+# Concurrency: fire 8 parallel ₹3000 payouts, each 1/3 of available balance
+for i in $(seq 1 8); do
+  ( curl -s -X POST $BASE/payouts \
+      -H "Authorization: Bearer $ACCESS" \
+      -H "Idempotency-Key: $(uuidgen | tr 'A-Z' 'a-z')" \
+      -H "Content-Type: application/json" \
+      -d "{\"amount_paise\": 300000, \"bank_account_id\": \"$BANK\"}" \
+      -w "\n[$i] HTTP %{http_code}\n" ) &
+done; wait
+# Expected: ~3 × HTTP 201, ~5 × HTTP 422 insufficient_balance.
+```
 
 ---
 
@@ -36,6 +112,16 @@ I made three deliberate choices that all flow from "the ledger is the single sou
 3. **Append-only.** No UPDATE, no DELETE on `LedgerEntry`. A failed payout writes a `PAYOUT_REVERSAL` CREDIT, not a modification of the original DEBIT. This makes audits, replication, and time-travel queries (`balance_at(t)` is `SUM ... WHERE created_at <= t`) trivially correct.
 
 **I chose not to cache the balance on the Merchant row.** Cached balance is the single most common bug class in fintech: two writers update the cache, one wins, ledger and cache drift, you can't tell which is right. Postgres can `SUM` a million indexed rows in milliseconds. For higher volumes you'd add a periodic checkpoint table (snapshot + delta-since-snapshot); for this challenge scope the SUM is sub-millisecond.
+
+> **Verify this yourself**
+> ```bash
+> cd backend && uv run pytest tests/test_balance.py -v
+> ```
+> 4 tests: empty ledger returns 0, single credit returns amount, credits
+> minus debits returns the right number, return type is `int`. Or hit
+> `GET /api/v1/balance` against the live API after seed and confirm
+> `available_paise` matches the `SUM(credits) − SUM(debits)` you'd
+> compute by hand from the seed data.
 
 ---
 
@@ -83,6 +169,21 @@ with transaction.atomic():
 
 **The system-wide invariant:** every code path that INSERTs into `LedgerEntry` first does `Merchant.objects.select_for_update().get(id=...)` inside the same `transaction.atomic` block. Four call sites: `create_payout`, `mark_payout_failed`, `reap_stuck_payouts` (when failing after max retries), and the seed script. Documented + code-reviewed; the codebase is small enough that all four are visible.
 
+> **Verify this yourself**
+>
+> Local test (uses `threading.Barrier` to maximize the race window
+> against real Postgres, not SQLite):
+> ```bash
+> cd backend && uv run pytest tests/test_concurrency.py -v
+> ```
+> Two tests: simultaneous overdraw (exactly one succeeds, balance
+> stays at 40 not -20) + sequential happy path (lock doesn't break
+> normal flow).
+>
+> Live: click the **🏎️ Concurrency** button on the dashboard, or run
+> the parallel curl loop in the "Reproduce the live demo" section above.
+> ~3 of 8 should succeed; the other ~5 get clean 422s.
+
 ---
 
 ## 3. The Idempotency
@@ -122,6 +223,31 @@ The unique index *is* the dedup primitive — there is no "check then create" ra
 
 **Keys are scoped per merchant** via the `(key, merchant_id)` composite unique index. Two different merchants can independently use the same UUID with no collision. **Keys expire after 24 hours** via a Celery beat task (`purge_expired_idempotency`).
 
+> **Verify this yourself**
+>
+> Local:
+> ```bash
+> cd backend && uv run pytest tests/test_idempotency.py -v
+> ```
+> 4 tests: same key returns same payout, same key with different body
+> raises mismatch, failed-request idempotency persists the 422 error,
+> different merchants can share a key.
+>
+> Live: click the **🔁 Idempotency** button. Or via curl:
+> ```bash
+> KEY=$(uuidgen | tr 'A-Z' 'a-z')
+> for i in 1 2; do
+>   curl -s -X POST $BASE/payouts \
+>     -H "Authorization: Bearer $ACCESS" \
+>     -H "Idempotency-Key: $KEY" \
+>     -H "Content-Type: application/json" \
+>     -d "{\"amount_paise\": 1000, \"bank_account_id\": \"$BANK\"}" \
+>     -w "\n[$i] HTTP %{http_code}\n"
+> done
+> ```
+> Expected: `[1] HTTP 201` then `[2] HTTP 200` with
+> `idempotent_replay: true` and identical `id` in both responses.
+
 ---
 
 ## 4. The State Machine
@@ -156,6 +282,16 @@ def transition_to(self, new_status, *, actor, reason=""):
 **The retry-without-going-backwards trick:** the spec says "anything backwards is illegal" — including `processing → pending`. The watchdog never moves a payout backwards. Instead, `attempt_payout` accepts BOTH `PENDING` (first call) and `PROCESSING` (retry) as valid entry states; the payout stays in `PROCESSING` across all retry attempts. Only `attempts` and `processing_started_at` change between attempts. This satisfies "no backwards transition" while still enabling retry. Verified by `test_processing_to_pending_illegal` (legality check) and `test_watchdog_retries_under_max_attempts` (retry behaviour).
 
 Every legal transition writes a `PayoutEvent` audit row, so the timeline of any payout is queryable: when it was created, when each retry happened, when it terminated, and which actor (`api`, `worker`, `watchdog`) caused each move. That's a future-debugging insurance policy.
+
+> **Verify this yourself**
+> ```bash
+> cd backend && uv run pytest tests/test_state_machine.py tests/test_watchdog.py -v
+> ```
+> 8 state-machine tests covering every legal + illegal transition (including
+> `failed → completed`, `completed → pending`, `processing → pending`),
+> plus 2 watchdog tests covering both retry-under-max and fail-and-reverse
+> at max attempts. Plus 3 worker end-to-end tests in `test_worker_e2e.py`
+> that confirm the success path and the atomic state+reversal failure path.
 
 ---
 
