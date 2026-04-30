@@ -75,3 +75,23 @@ class LedgerListView(ListAPIView):
         qs = LedgerEntry.objects.filter(merchant=self.request.user).order_by("-created_at")
         limit = min(int(self.request.query_params.get("limit", 50)), 200)
         return qs[:limit]
+
+
+class CreditsView(APIView):
+    """Demo-only top-up. Writes one CREDIT ledger entry for the caller."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .serializers import CreateCreditRequestSerializer
+        from .services import create_credit_entry
+        ser = CreateCreditRequestSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(
+                {"error": "invalid_amount", "details": ser.errors},
+                status=400,
+            )
+        entry = create_credit_entry(
+            merchant=request.user,
+            amount_paise=ser.validated_data["amount_paise"],
+        )
+        return Response(LedgerEntrySerializer(entry).data, status=201)
