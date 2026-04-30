@@ -1,5 +1,6 @@
 """Tests for the demo top-up service that credits a merchant's balance."""
 import pytest
+from rest_framework.test import APIClient
 
 from payouts.models import LedgerEntry
 from payouts.services import (
@@ -42,7 +43,6 @@ def test_create_credit_above_maximum_rejected(merchant):
 
 
 # ──────────── view layer ────────────
-from rest_framework.test import APIClient
 
 
 @pytest.fixture

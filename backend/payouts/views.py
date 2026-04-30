@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 
-from .services import get_balance_summary, create_payout
+from .services import get_balance_summary, create_payout, create_credit_entry
 from .serializers import (
-    CreatePayoutRequestSerializer, PayoutSerializer, LedgerEntrySerializer,
+    CreatePayoutRequestSerializer, CreateCreditRequestSerializer,
+    PayoutSerializer, LedgerEntrySerializer,
 )
 from .models import Payout, LedgerEntry
 from .exceptions import PayoutError
@@ -82,8 +83,6 @@ class CreditsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from .serializers import CreateCreditRequestSerializer
-        from .services import create_credit_entry
         ser = CreateCreditRequestSerializer(data=request.data)
         if not ser.is_valid():
             return Response(
