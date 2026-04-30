@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 
-from .services import get_balance_summary, create_payout
+from .services import get_balance_summary, create_payout, create_credit_entry
 from .serializers import (
-    CreatePayoutRequestSerializer, PayoutSerializer, LedgerEntrySerializer,
+    CreatePayoutRequestSerializer, CreateCreditRequestSerializer,
+    PayoutSerializer, LedgerEntrySerializer,
 )
 from .models import Payout, LedgerEntry
 from .exceptions import PayoutError
@@ -75,3 +76,21 @@ class LedgerListView(ListAPIView):
         qs = LedgerEntry.objects.filter(merchant=self.request.user).order_by("-created_at")
         limit = min(int(self.request.query_params.get("limit", 50)), 200)
         return qs[:limit]
+
+
+class CreditsView(APIView):
+    """Demo-only top-up. Writes one CREDIT ledger entry for the caller."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ser = CreateCreditRequestSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(
+                {"error": "invalid_amount", "details": ser.errors},
+                status=400,
+            )
+        entry = create_credit_entry(
+            merchant=request.user,
+            amount_paise=ser.validated_data["amount_paise"],
+        )
+        return Response(LedgerEntrySerializer(entry).data, status=201)

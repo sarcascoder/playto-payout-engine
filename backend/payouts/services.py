@@ -66,6 +66,38 @@ def get_balance_summary(merchant: Merchant) -> dict:
     }
 
 
+# ────────────────────────────── credits ──────────────────────────────
+
+# Demo top-up bounds. Tight upper bound keeps the abuse surface small if
+# this endpoint is ever left enabled outside the take-home demo.
+MIN_CREDIT_PAISE = 100              # ₹1
+MAX_CREDIT_PAISE = 100_00_000       # ₹1,00,000 (1 lakh) per call
+
+
+def create_credit_entry(*, merchant: Merchant, amount_paise: int) -> LedgerEntry:
+    """Write one CREDIT LedgerEntry for a merchant. Demo top-up only.
+
+    Holds the merchant row lock for symmetry with create_payout — every
+    ledger write in this codebase must take the lock so balance reads
+    inside the lock see a stable, ordered view.
+    """
+    if not (MIN_CREDIT_PAISE <= amount_paise <= MAX_CREDIT_PAISE):
+        raise ValueError(
+            f"amount_paise {amount_paise} outside "
+            f"[{MIN_CREDIT_PAISE}, {MAX_CREDIT_PAISE}]"
+        )
+    with transaction.atomic():
+        # Re-fetch under lock to maintain the codebase invariant.
+        locked = Merchant.objects.select_for_update().get(id=merchant.id)
+        return LedgerEntry.objects.create(
+            merchant=locked,
+            amount_paise=amount_paise,
+            entry_type=LedgerEntry.CREDIT,
+            category=LedgerEntry.CUSTOMER_PAYMENT,
+            description=f"Demo top-up: ₹{amount_paise / 100:.2f}",
+        )
+
+
 # ────────────────────────────── idempotency ──────────────────────────────
 
 def _fingerprint(body: dict) -> str:
