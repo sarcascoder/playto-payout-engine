@@ -1,5 +1,6 @@
 import { useBalance } from "../hooks/useBalance";
 import { formatPaiseBare, formatPaise } from "../lib/format";
+import { TopUpForm } from "./TopUpForm";
 
 export function BalanceCard() {
   const { data, isLoading } = useBalance();
@@ -10,32 +11,42 @@ export function BalanceCard() {
 
   return (
     <section className="card p-8 rise-in rise-in-delay-1">
-      <div className="flex items-baseline justify-between mb-3">
-        <span className="eyebrow">Available balance</span>
-        <span className="text-xs text-[var(--color-ink-muted)] num">
-          updated {new Date().toLocaleTimeString()}
-        </span>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-8 md:gap-12">
+        {/* Left: numbers */}
+        <div>
+          <div className="flex items-baseline justify-between mb-3">
+            <span className="eyebrow">Available balance</span>
+            <span className="text-xs text-[var(--color-ink-muted)] num">
+              updated {new Date().toLocaleTimeString()}
+            </span>
+          </div>
 
-      <div className="flex items-baseline gap-3">
-        <span className="display-num text-[var(--color-ink)]">
-          ₹{formatPaiseBare(data.available_paise)}
-        </span>
-      </div>
+          <div className="flex items-baseline gap-3">
+            <span className="display-num text-[var(--color-ink)]">
+              ₹{formatPaiseBare(data.available_paise)}
+            </span>
+          </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-x-12 gap-y-3 max-w-md">
-        <SubMetric
-          label="In flight"
-          value={formatPaise(data.held_paise)}
-          accent="text-[var(--color-warning)]"
-          hint="held in pending or processing payouts"
-        />
-        <SubMetric
-          label="Total"
-          value={formatPaise(data.total_paise)}
-          accent="text-[var(--color-ink)]"
-          hint="available + in flight"
-        />
+          <div className="mt-6 grid grid-cols-2 gap-x-12 gap-y-3 max-w-md">
+            <SubMetric
+              label="In flight"
+              value={formatPaise(data.held_paise)}
+              accent="text-[var(--color-warning)]"
+              hint="held in pending or processing payouts"
+            />
+            <SubMetric
+              label="Total"
+              value={formatPaise(data.total_paise)}
+              accent="text-[var(--color-ink)]"
+              hint="available + in flight"
+            />
+          </div>
+        </div>
+
+        {/* Right: top-up */}
+        <div className="md:border-l md:border-[var(--color-line-soft)] md:pl-8">
+          <TopUpForm />
+        </div>
       </div>
     </section>
   );
