@@ -34,3 +34,4 @@ dist/
 
 # Misc
 *.log
+.vercel
