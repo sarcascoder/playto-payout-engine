@@ -11,6 +11,12 @@ class CreatePayoutRequestSerializer(serializers.Serializer):
     bank_account_id = serializers.UUIDField()
 
 
+class CreateCreditRequestSerializer(serializers.Serializer):
+    # Bounds match payouts.services.MIN/MAX_CREDIT_PAISE exactly.
+    # Repeated here (not imported) because serializers stay declarative.
+    amount_paise = serializers.IntegerField(min_value=100, max_value=100_00_000)
+
+
 class PayoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payout
