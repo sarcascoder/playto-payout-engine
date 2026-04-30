@@ -46,6 +46,7 @@ export function TopUpForm() {
           min="1"
           className="input num pl-7 w-full"
           placeholder="Amount"
+          aria-label="Top-up amount in rupees"
           value={rupees}
           onChange={(e) => setRupees(e.target.value)}
         />
